@@ -1,0 +1,9 @@
+*.pyc
+__pycache__
+.coverage
+.env
+cov.xml
+junit.xml
+.tox
+.vscode/settings.json
+src/airflow_pydantic_dags.egg-info
