@@ -1,3 +1,8 @@
+# ==== build ====
+[build-system]
+requires = [ "setuptools>=41", "wheel", "setuptools-git-versioning<2", ]
+build-backend = "setuptools.build_meta"
+
 # ==== project ====
 [project]
 name = "airflow-pydantic-dags"
@@ -14,6 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version", "dependencies"]
+
+[tool.setuptools-git-versioning]
+enabled = true
 
 # ==== setuptools ====
 [tool.setuptools.dynamic]
