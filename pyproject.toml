@@ -15,7 +15,7 @@ requires-python = ">=3.9"
 keywords = ["airflow", "pydantic"]
 license = {text = "BSD-3-Clause"}
 classifiers = [
-    "Framework :: Airflow",
+    "Framework :: Apache Airflow",
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version", "dependencies"]
