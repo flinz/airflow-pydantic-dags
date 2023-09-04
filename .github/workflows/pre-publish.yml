@@ -33,5 +33,5 @@ jobs:
           pre-commit run --all-files
       - name: Test with tox
         run: |
-          sed -i 's/>=2.6<=2.7/${{ matrix.airflow-version }}/g' requirements.txt
+          sed -i 's/>=2.6,<=2.7/${{ matrix.airflow-version }}/g' requirements.txt
           tox
