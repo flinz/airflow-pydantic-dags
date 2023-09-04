@@ -10,7 +10,7 @@ authors = [
     {name = "Alex Seeholzer", email = "seeholzer@gmail.com"},
 ]
 description = "DAG subclass that parses run params (and config) using pydantic, and makes it available as a pydantic object in Tasks"
-readme = "Readme.md"
+readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["airflow", "pydantic"]
 license = {text = "BSD-3-Clause"}
