@@ -1,11 +1,20 @@
 # Airflow-Pydantic-DAGs
 
+[![Python package](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/pre-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/pre-publish.yml)
+
+Airflow DAGs that receive Pydantic objects for configuration of tasks 🔋
+
 ## Why?
 
 When writing DAGs, I like to have run configurations validated, deserialized, and
 available in my tasks. While Airflow [chose to go for in-house validation](https://github.com/apache/airflow/pull/17100) and does not de-serialize the config (you get a dictionary at runtime), using Airflow-Pydantic-DAGs (APD) you get a pydantic object at runtime.
 
 ## Installation
+
+Currently, this supports:
+
+- airflow >= 2.6.0
+- pydantic < 2
 
 As soon as we publish this to pip :) you can
 

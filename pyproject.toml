@@ -1,3 +1,8 @@
+# ==== build ====
+[build-system]
+requires = [ "setuptools>=41", "wheel", "setuptools-git-versioning<2", ]
+build-backend = "setuptools.build_meta"
+
 # ==== project ====
 [project]
 name = "airflow-pydantic-dags"
@@ -5,15 +10,18 @@ authors = [
     {name = "Alex Seeholzer", email = "seeholzer@gmail.com"},
 ]
 description = "DAG subclass that parses run params (and config) using pydantic, and makes it available as a pydantic object in Tasks"
-readme = "Readme.md"
+readme = "README.md"
 requires-python = ">=3.9"
 keywords = ["airflow", "pydantic"]
 license = {text = "BSD-3-Clause"}
 classifiers = [
-    "Framework :: Airflow",
+    "Framework :: Apache Airflow",
     "Programming Language :: Python :: 3",
 ]
 dynamic = ["version", "dependencies"]
+
+[tool.setuptools-git-versioning]
+enabled = true
 
 # ==== setuptools ====
 [tool.setuptools.dynamic]
@@ -103,7 +111,10 @@ legacy_tox_ini = """
         3.11: py311
 
     [testenv]
-    commands_pre = airflow db reset -y -v
+    commands_pre =
+        airflow version
+        airflow db reset -y -v
+        python -c 'import pydantic; print(pydantic.__version__)'
     commands = pytest {posargs} -rs --junitxml=junit.xml --cov=./ --cov-config=.coveragerc  --cov-report=html --cov-report=xml:cov.xml --cov-report=term -s -vv
     deps =
         -rrequirements-test.txt

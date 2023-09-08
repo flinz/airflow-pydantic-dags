@@ -5,5 +5,6 @@ __pycache__
 cov.xml
 junit.xml
 .tox
-.vscode/settings.json
 src/airflow_pydantic_dags.egg-info
+dist
+build
