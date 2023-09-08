@@ -17,10 +17,10 @@ with PydanticDAG(
     schedule=None,
     start_date=datetime(2023, 8, 1),
     params={"airflow_classic_param": 1},
-) as dag:
+) as example_dag:
 
-    @task(dag=dag)
-    @dag.parse_config()
+    @task(dag=example_dag)
+    @example_dag.parse_config()
     # in Airflow, at DAG initalization time, keyword arguments are None
     def pull_params(config_object: Union[MyRunConfig, None] = None, **kwargs):
         # params contains pydantic and non-pydantic parameter values
