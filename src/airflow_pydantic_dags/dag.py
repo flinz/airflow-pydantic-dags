@@ -126,11 +126,13 @@ class PydanticDAG(DAG, Generic[T]):
     @provide_session
     def create_dagrun(self, *args, session: Session = NEW_SESSION, conf: Union[dict, None] = None, **kwargs):
         """Check whether we can parse the configuration as a pydantic object before creating a dagrun."""
+
         if conf is not None:
             try:
                 self.run_config_class(**conf)
             except pyd.ValidationError as e:
                 raise AirflowException(f"Invalid configuration for Pydantic class {self.run_config_class}: " f"{e}")
+
         # mypy throws a validation error here, if we pass the arguments explicitly
         # lets add them to kwargs to prevent duplication of arguments passed
         kwargs["session"] = session
