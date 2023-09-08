@@ -1,10 +1,13 @@
 import warnings
 from functools import wraps
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union
 
 import pydantic as pyd
 from airflow import DAG
 from airflow.exceptions import AirflowException
+from airflow.operators.python import PythonOperator
+from airflow.utils.session import NEW_SESSION, provide_session
+from sqlalchemy.orm.session import Session
 
 from airflow_pydantic_dags.exceptions import NoDefaultValuesException
 from airflow_pydantic_dags.warnings import IgnoringExtrasWarning
@@ -27,15 +30,24 @@ class PydanticDAG(DAG, Generic[T]):
        by Pydantic.
     """
 
-    def __init__(self, pydantic_class: type[T], *args, **kwargs):
+    def __init__(self, pydantic_class: type[T], *args, insert_validation_task: bool = False, **kwargs):
         """Initialize an Airflow DAG that uses pydantic_class to
         parse and validate DAG parameters/config.
 
         Args:
             pydantic_class (subclass of pydantic.BaseModel): Pydantic model to use for
-            for task parameters/config validation. Requirements for the Pydantic model are:
-            - the model must provide default values for all attributes: this is required
-              since the Airflow UI requires default values for all parameters.
+                for task parameters/config validation. Requirements for the Pydantic model are:
+                - the model must provide default values for all attributes: this is required
+                    since the Airflow UI requires default values for all parameters
+                - the model should have Config.Extra.ignore set, otherwise this will be changed
+                    at initalization time and a warning will be generated.
+            insert_validation_task (bool): Whether to insert a validation task without dependencies.
+                this is useful if you are triggering tasks from the UI: the frontend code
+                instantiates this PydanticDAG as regular DAG and therefore never calls
+                the create_dagrun overloaded method below, so it will succeed to create a run
+                even for nonvalid parameters. The validation task will be executed at the start
+                of the DAG fail if parameters are invalid.
+
 
         Raises:
             NoDefaultValuesException: Raised if the Pydantic model can not be instantiated
@@ -80,6 +92,18 @@ class PydanticDAG(DAG, Generic[T]):
 
         super().__init__(*args, **kwargs)
 
+        # create a validation that is used to parse the final config once
+        # this is useful if you are triggering tasks from the UI:
+        # the frontend code interprets this PydanticDAG as a DAG
+        # and therefor never calls the create_dagrun overloaded
+        # method below, so it will succeed to create a run
+        # even for nonvalid parameters
+        @self.parse_config()
+        def function(**more_kwargs):
+            pass
+
+        self.add_task(PythonOperator(task_id="validate_params", python_callable=function))
+
     def parse_config(self):
         def return_config(f):
             @wraps(f)
@@ -98,3 +122,17 @@ class PydanticDAG(DAG, Generic[T]):
             return wrapper
 
         return return_config
+
+    @provide_session
+    def create_dagrun(self, *args, session: Session = NEW_SESSION, conf: Union[dict, None] = None, **kwargs):
+        """Check whether we can parse the configuration as a pydantic object before creating a dagrun."""
+        if conf is not None:
+            try:
+                self.run_config_class(**conf)
+            except pyd.ValidationError as e:
+                raise AirflowException(f"Invalid configuration for Pydantic class {self.run_config_class}: " f"{e}")
+        # mypy throws a validation error here, if we pass the arguments explicitly
+        # lets add them to kwargs to prevent duplication of arguments passed
+        kwargs["session"] = session
+        kwargs["conf"] = conf
+        return super().create_dagrun(*args, **kwargs)

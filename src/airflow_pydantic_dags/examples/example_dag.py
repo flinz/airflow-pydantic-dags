@@ -8,7 +8,14 @@ from airflow_pydantic_dags.dag import PydanticDAG
 
 
 class MyRunConfig(pyd.BaseModel):
-    string_to_print: str = "overwrite this"
+    string_param: str = "has space"
+    int_param: int = 1
+
+    @pyd.validator("string_param")
+    def name_must_contain_space(cls, v):
+        if " " not in v:
+            raise ValueError("must contain a space")
+        return v
 
 
 with PydanticDAG(

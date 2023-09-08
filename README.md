@@ -1,13 +1,16 @@
 # Airflow-Pydantic-DAGs
 
-[![Python package](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/pre-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/pre-publish.yml)
+[![Python CICD](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml)
 
-Airflow DAGs that receive Pydantic objects for configuration of tasks 🔋
+Airflow DAGs that use [Pydantic](https://pydantic.dev) models for task configuration.
 
-## Why?
+## Use Pydantic 🔋 for Airflow Configuration
 
-When writing DAGs, I like to have run configurations validated, deserialized, and
-available in my tasks. While Airflow [chose to go for in-house validation](https://github.com/apache/airflow/pull/17100) and does not de-serialize the config (you get a dictionary at runtime), using Airflow-Pydantic-DAGs (APD) you get a pydantic object at runtime.
+Runs of Airflow DAGs can be configured using parameters, that use [propietary validation](https://github.com/apache/airflow/pull/17100) and are not de-serialized: you get a dictionary of parameters in your tasks. This leaves YOU to deal with un-typed dictionary values at the task level, write validation logic for them, all without instrospection when developing.
+
+If only there was a established library to create data models with validation?
+
+Enter [Pydantic](https://pydantic.dev): using the `DAG` model of `airflow-pydantic-dags` you get a Pydantic model passed to your tasks, that contains your validated run configuration. Your model is also exposed in the Airflow UI, making it easy to launch Airflow DAGRuns.
 
 ## Installation
 

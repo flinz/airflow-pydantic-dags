@@ -5,6 +5,8 @@ import pendulum
 import pydantic as pyd
 import pytest
 from airflow.decorators import task
+from airflow.exceptions import AirflowException
+from airflow.operators.empty import EmptyOperator
 
 from airflow_pydantic_dags.dag import PydanticDAG
 from airflow_pydantic_dags.warnings import IgnoringExtrasWarning
@@ -19,8 +21,9 @@ class InnerClass(pyd.BaseModel):
 
 
 class RunConfig(pyd.BaseModel):
-    string_to_print: str = default_str
-    nested_values: InnerClass = InnerClass()
+    string_param: str = default_str
+    int_param: int = default_int
+    nested_param: InnerClass = InnerClass()
 
 
 def test_task_without_kwargs_fails(caplog: pytest.LogCaptureFixture):
@@ -68,7 +71,7 @@ def test_pydantic_class_without_default_fails():
 
     # create a pydantic class without default values
     class RunConfigNoDefault(pyd.BaseModel):
-        string_to_print: str
+        string_param: str
 
     # make sure this raises an exception at DAG instantiation time
     with pytest.raises(Exception):
@@ -130,14 +133,14 @@ def test_pydantic_class_without_extra_ignore_warning(setting: pyd.Extra):
     [
         [None, {}],
         [{}, {}],
-        [{}, {"string_to_print": nondefault_str}],
-        [{}, {"nested_values": {"value": default_int + 1}}],
-        [{"extra": 1}, {"string_to_print": nondefault_str}],
-        [{"extra": 1}, {"nested_values": {"value": default_int + 1}}],
+        [{}, {"string_param": nondefault_str}],
+        [{}, {"nested_param": {"value": default_int + 1}}],
+        [{"extra": 1}, {"string_param": nondefault_str}],
+        [{"extra": 1}, {"nested_param": {"value": default_int + 1}}],
     ],
 )
 def test_mapped_expand_against_params(params, conf):
-    """Test that params are expanded as expected, and pydantic objects
+    """Test that params are expanded as expected and pydantic objects
     are parsed as expected."""
     param_dict = []
     object_dict = []
@@ -179,3 +182,50 @@ def test_mapped_expand_against_params(params, conf):
     # tested here by equality of the dict that is produced
     assert len(object_dict) == 1
     assert object_dict[0] == expected_class.dict()
+
+
+def test_invalid_parameters_failing_at_dagrun_creation():
+    """Test that params for a run config are validated by Pydantic
+    and validation errors are thrown as airflow."""
+
+    # create a DAG that has a single task, which
+    # outputs the params and object dictionaries into
+    # lists, so we can test for expected values after
+    with PydanticDAG(
+        pydantic_class=RunConfig,
+        dag_id="test_pydantic_dag",
+        schedule=None,
+        start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
+        catchup=False,
+    ) as dag:
+        EmptyOperator(dag=dag, task_id="do_nothing")
+
+    # we try to create a run that uses an invalid value
+    # --> Pydantic will throw a validation exception
+    # and we will catch it, turn it into an airflowexception
+    # and it is thrown, outside of airflow execution
+    # at creation-time of the DAGruns
+    with pytest.raises(AirflowException, match="not a valid integer"):
+        dag.test(run_conf={"int_param": "not_an_int"})
+
+
+def test_validation_task():
+    """Test that Creating a validation task works."""
+
+    with PydanticDAG(
+        pydantic_class=RunConfig,
+        insert_validation_task=True,
+        dag_id="test_pydantic_dag",
+        schedule=None,
+        start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
+        catchup=False,
+    ) as dag:
+        pass
+
+    tasks = dag.tasks
+    assert len(tasks) == 1
+    assert tasks[0].task_id == "validate_params"
+
+    # TODO testing a submission from the UI with invalid parameters
+    # this would generate a dagrun that would fail in the validation
+    # task
