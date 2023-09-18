@@ -1,0 +1,2 @@
+apache-airflow>=2.6,<=2.7
+pydantic>=1.10,<2

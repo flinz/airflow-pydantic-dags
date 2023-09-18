@@ -1,0 +1,21 @@
+{
+  "version": "0.1.0",
+  "configurations": [
+    {
+      "name": "Python: Pytest",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "cwd": "${workspaceFolder}",
+      "args": ["-vvv"]
+    },
+    {
+      "name": "Python: Tox",
+      "type": "python",
+      "request": "launch",
+      "module": "tox",
+      "cwd": "${workspaceFolder}",
+      "args": []
+    }
+  ]
+}

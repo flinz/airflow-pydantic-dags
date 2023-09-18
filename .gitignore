@@ -1,0 +1,10 @@
+*.pyc
+__pycache__
+.coverage
+.env
+cov.xml
+junit.xml
+.tox
+src/airflow_pydantic_dags.egg-info
+dist
+build
