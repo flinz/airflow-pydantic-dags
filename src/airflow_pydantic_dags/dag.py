@@ -41,13 +41,13 @@ class PydanticDAG(DAG, Generic[T]):
                     since the Airflow UI requires default values for all parameters
                 - the model should have Config.Extra.ignore set, otherwise this will be changed
                     at initalization time and a warning will be generated.
-            insert_validation_task (bool): Whether to insert a validation task without dependencies.
+            insert_validation_task (bool): Whether to insert a validation task (without any
+                task dependencies).
                 this is useful if you are triggering tasks from the UI: the frontend code
                 instantiates this PydanticDAG as regular DAG and therefore never calls
-                the create_dagrun overloaded method below, so it will succeed to create a run
+                the create_dagrun override method below, so it will succeed to create a run
                 even for nonvalid parameters. The validation task will be executed at the start
                 of the DAG fail if parameters are invalid.
-
 
         Raises:
             NoDefaultValuesException: Raised if the Pydantic model can not be instantiated
@@ -92,30 +92,50 @@ class PydanticDAG(DAG, Generic[T]):
 
         super().__init__(*args, **kwargs)
 
-        # create a validation that is used to parse the final config once
-        # this is useful if you are triggering tasks from the UI:
-        # the frontend code interprets this PydanticDAG as a DAG
-        # and therefor never calls the create_dagrun overloaded
-        # method below, so it will succeed to create a run
-        # even for nonvalid parameters
-        @self.parse_config()
-        def function(**more_kwargs):
-            pass
+        if insert_validation_task:
+            validation_task = self.get_validation_task()
+            self.add_task(validation_task)
 
-        self.add_task(PythonOperator(task_id="validate_params", python_callable=function))
+    def get_pydantic_config(self, config_dict: dict):
+        """Instantiate a pydantic model instance for the given config dictionary.
+
+        Args:
+            config_dict (dict): Dictionary passed to pydantic to instantate the pydantic instance
+        """
+
+        try:
+            o = self.run_config_class(**config_dict)
+        except pyd.ValidationError as e:
+            raise AirflowException(f"Invalid configuration for Pydantic class {self.run_config_class}: " f"{e}")
+
+        return o
 
     def parse_config(self):
+        """Returns a function wrapper that will check for params in the kwargs,
+        deserialize these params as the pydantic model, and pass the model the kwargs.
+
+        Raises:
+            AirflowException: If the function to be wrapped does not have kwargs defined.
+
+        Returns:
+            _type_: _description_
+        """
+
         def return_config(f):
             @wraps(f)
             def wrapper(*args, **kwargs):
                 if "params" not in kwargs:
+                    # params will always be passed in kwargs by airflow
+                    # therefore the likely cause to end up here is if
+                    # kwargs is not in the function signature
                     raise AirflowException(
                         f"Airflow did not pass kwargs to task, please add "
                         f"`**kwargs` to the task definition of `{f.__name__}`."
                     )
+
                 return f(
                     *args,
-                    config_object=self.run_config_class(**kwargs["params"]),
+                    config_object=self.get_pydantic_config(kwargs["params"]),
                     **kwargs,
                 )
 
@@ -125,16 +145,38 @@ class PydanticDAG(DAG, Generic[T]):
 
     @provide_session
     def create_dagrun(self, *args, session: Session = NEW_SESSION, conf: Union[dict, None] = None, **kwargs):
-        """Check whether we can parse the configuration as a pydantic object before creating a dagrun."""
+        """Override the original create_dagrun method of airflow.DAG,
+        to validaate the whether we can parse the configuration as a
+        pydantic object before creating a dagrun.
+        """
 
         if conf is not None:
-            try:
-                self.run_config_class(**conf)
-            except pyd.ValidationError as e:
-                raise AirflowException(f"Invalid configuration for Pydantic class {self.run_config_class}: " f"{e}")
+            self.get_pydantic_config(conf)
 
         # mypy throws a validation error here, if we pass the arguments explicitly
         # lets add them to kwargs to prevent duplication of arguments passed
         kwargs["session"] = session
         kwargs["conf"] = conf
         return super().create_dagrun(*args, **kwargs)
+
+    def get_validation_task(self, task_id: str = "validate_params"):
+        """Returns an Airflow task bound to the DAG, that will validate the configuration.
+
+        Args:
+            task_id (str, optional): _description_. Defaults to 'validate_params'.
+
+        This is useful if we are triggering tasks from the UI:
+        the frontend code somehow gets a DAG instead of the PydanticDAG
+        and therefore never calls the create_dagrun override
+        method above, so it will succeed to create a run
+        even for nonvalid parameters.
+
+        This task can be used to create a validation step,
+        that will surely fail.
+        """
+
+        @self.parse_config()
+        def function(**func_kwargs):
+            pass
+
+        return PythonOperator(task_id=task_id, python_callable=function)

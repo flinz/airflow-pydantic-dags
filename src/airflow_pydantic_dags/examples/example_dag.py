@@ -20,6 +20,7 @@ class MyRunConfig(pyd.BaseModel):
 
 with PydanticDAG(
     pydantic_class=MyRunConfig,
+    insert_validation_task=True,
     dag_id="example",
     schedule=None,
     start_date=datetime(2023, 8, 1),
