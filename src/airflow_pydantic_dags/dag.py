@@ -61,6 +61,10 @@ class PydanticDAG(DAG, Generic[T]):
         if "params" not in kwargs or kwargs["params"] is None:
             kwargs["params"] = {}
 
+        print("--------------------------------------------------- PARAMS")
+        print(kwargs["params"])
+        print("---------------------------------------------------")
+
         try:
             # this will enforce default values exist for all fields in the run_config
             # validation error will be raised here, if the pydantic model does not
@@ -132,7 +136,6 @@ class PydanticDAG(DAG, Generic[T]):
                         f"Airflow did not pass kwargs to task, please add "
                         f"`**kwargs` to the task definition of `{f.__name__}`."
                     )
-
                 return f(
                     *args,
                     config_object=self.get_pydantic_config(kwargs["params"]),
@@ -177,6 +180,6 @@ class PydanticDAG(DAG, Generic[T]):
 
         @self.parse_config()
         def function(**func_kwargs):
-            pass
+            print(func_kwargs)
 
         return PythonOperator(task_id=task_id, python_callable=function)

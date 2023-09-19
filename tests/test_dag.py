@@ -209,7 +209,7 @@ def test_invalid_parameters_failing_at_dagrun_creation():
         dag.test(run_conf={"int_param": "not_an_int"})
 
 
-def test_validation_task():
+def test_create_validation_task_on_instance():
     """Test that Creating a validation task works."""
 
     with PydanticDAG(
@@ -226,6 +226,46 @@ def test_validation_task():
     assert len(tasks) == 1
     assert tasks[0].task_id == "validate_params"
 
-    # TODO testing a submission from the UI with invalid parameters
-    # this would generate a dagrun that would fail in the validation
-    # task
+
+def test_get_validation_task():
+    """Test that getting a validation task manually works."""
+
+    with PydanticDAG(
+        pydantic_class=RunConfig,
+        insert_validation_task=False,
+        dag_id="test_pydantic_dag",
+        schedule=None,
+        start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
+        catchup=False,
+    ) as dag:
+        dag.get_validation_task(task_id="validate_params_task")
+    tasks = dag.tasks
+    assert len(tasks) == 1
+    assert tasks[0].task_id == "validate_params_task"
+
+
+def test_validation_task(monkeypatch):
+    """Test that validation tasks actually work if
+    PydanticDAG.get_dagrun does not validate."""
+
+    from airflow.utils.session import NEW_SESSION, provide_session
+    from sqlalchemy.orm.session import Session
+
+    class PydanticDAGNoCreateDagRun(PydanticDAG):
+        @provide_session
+        def create_dagrun(self, *args, session: Session = NEW_SESSION, **kwargs):
+            kwargs["session"] = session
+            return super().create_dagrun(*args, **kwargs)
+
+    with PydanticDAGNoCreateDagRun(
+        pydantic_class=RunConfig,
+        insert_validation_task=True,
+        dag_id="test_pydantic_dag",
+        schedule=None,
+        start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
+        catchup=False,
+    ) as dag:
+        pass
+
+    with pytest.raises(AirflowException, match="not a valid integer"):
+        dag.test(run_conf={"int_param": "not_an_int"})
