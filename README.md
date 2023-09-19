@@ -2,9 +2,9 @@
 
 [![Python CICD](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml)
 
-Airflow DAGs that use [Pydantic](https://pydantic.dev) models for task configuration.
+PydanticDAGs allows you to use [Pydantic](https://pydantic.dev) models for task configuration in your [Airflow](https://airflow.apache.org) DAGs.
 
-## Use Pydantic 🔋 for Airflow Configuration
+## Airflow + Pydantic = ❤️: Use Pydantic for Airflow Task Configuration
 
 Runs of Airflow DAGs can be configured using parameters, that use [propietary validation](https://github.com/apache/airflow/pull/17100) and are not de-serialized: you get a dictionary of parameters in your tasks. This leaves YOU to deal with un-typed dictionary values at the task level, write validation logic for them, all without instrospection when developing.
 
