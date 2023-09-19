@@ -69,7 +69,7 @@ class MyRunConfig(pyd.BaseModel):
 
 
 with PydanticDAG(
-        params_pydantic_class=MyRunConfig,
+        pydantic_class=MyRunConfig,
         dag_id="example",
         schedule=None,
         start_date=datetime(2023, 8, 1),
