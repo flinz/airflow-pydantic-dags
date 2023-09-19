@@ -70,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://test.pypi.org/p/airflow-pydantic-dags
+      url: https://pypi.org/p/airflow-pydantic-dags
     permissions:
       id-token: write
       contents: read
