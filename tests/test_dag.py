@@ -214,7 +214,7 @@ def test_create_validation_task_on_instance():
 
     with PydanticDAG(
         pydantic_class=RunConfig,
-        insert_validation_task=True,
+        add_validation_task=True,
         dag_id="test_pydantic_dag",
         schedule=None,
         start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
@@ -232,7 +232,7 @@ def test_get_validation_task():
 
     with PydanticDAG(
         pydantic_class=RunConfig,
-        insert_validation_task=False,
+        add_validation_task=False,
         dag_id="test_pydantic_dag",
         schedule=None,
         start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
@@ -259,7 +259,7 @@ def test_validation_task(monkeypatch):
 
     with PydanticDAGNoCreateDagRun(
         pydantic_class=RunConfig,
-        insert_validation_task=True,
+        add_validation_task=True,
         dag_id="test_pydantic_dag",
         schedule=None,
         start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),

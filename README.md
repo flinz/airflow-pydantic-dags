@@ -31,14 +31,24 @@ Use the class `PydanticDAG` instead of `DAG`, and pass the pydantic class you wa
 to parse the params. By decorating tasks with `@dag.parse_config()` you will get a `config_object`
 passed to your task, which is an instance of the Pydantic class, initialized with your parameters.
 
-Currently, your Pydantic class needs to:
-
-- have default values for all attributes, otherwise the DAG will fail to initialize.
-- ignore or parse [extra attributes](https://docs.pydantic.dev/latest/usage/model_config/#extra-attributes), ignore is default for Pydantic classes.
+Currently, your Pydantic class **needs to provide default values for all attributes**,
+otherwise the DAG will fail to initialize.
 
 In the Airflow UI, you will find all attributes of the Pydantic class exposed as
 params. Currently, only non-nested fields are exposed as single items, everything
 else will become a json parameter.
+
+[!NOTE]
+Validation of params by Pydantic when submitting through the UI and CLI is **currently** not
+done at time of DAG run creation. To achieve early failure of your PydanticDAG `dag`
+for invalid parameters, do one of the following:
+
+- use `PydanticDAG(add_validation_task=True)`: this will add a task
+  (without dependencies) to your DAG that validates the params
+- use `dag.get_validation_task` to get a task that validates the params:
+  You can use this to create custom dependencies in your DAG on the validation
+- use the decorator `@dag.parse_config` on any of your own tasks:
+  this will force validation of the params
 
 ## Example
 

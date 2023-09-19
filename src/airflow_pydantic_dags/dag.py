@@ -1,6 +1,6 @@
 import warnings
 from functools import wraps
-from typing import Generic, TypeVar, Union
+from typing import Callable, Generic, TypeVar, Union
 
 import pydantic as pyd
 from airflow import DAG
@@ -30,7 +30,7 @@ class PydanticDAG(DAG, Generic[T]):
        by Pydantic.
     """
 
-    def __init__(self, pydantic_class: type[T], *args, insert_validation_task: bool = False, **kwargs):
+    def __init__(self, pydantic_class: type[T], *args, add_validation_task: bool = False, **kwargs):
         """Initialize an Airflow DAG that uses pydantic_class to
         parse and validate DAG parameters/config.
 
@@ -96,11 +96,11 @@ class PydanticDAG(DAG, Generic[T]):
 
         super().__init__(*args, **kwargs)
 
-        if insert_validation_task:
+        if add_validation_task:
             validation_task = self.get_validation_task()
             self.add_task(validation_task)
 
-    def get_pydantic_config(self, config_dict: dict):
+    def get_pydantic_config(self, config_dict: dict) -> T:
         """Instantiate a pydantic model instance for the given config dictionary.
 
         Args:
@@ -114,15 +114,18 @@ class PydanticDAG(DAG, Generic[T]):
 
         return o
 
-    def parse_config(self):
-        """Returns a function wrapper that will check for params in the kwargs,
+    RT = TypeVar("RT")
+
+    def parse_config(self) -> Callable[[Callable[..., RT]], Callable[..., RT]]:
+        """Returns a function decorator that will check for params in the kwargs,
         deserialize these params as the pydantic model, and pass the model the kwargs.
 
         Raises:
             AirflowException: If the function to be wrapped does not have kwargs defined.
 
         Returns:
-            _type_: _description_
+            function: Decorator that will inject the pydantic model `config_object`
+                into named arguments
         """
 
         def return_config(f):
