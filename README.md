@@ -38,10 +38,14 @@ In the Airflow UI, you will find all attributes of the Pydantic class exposed as
 params. Currently, only non-nested fields are exposed as single items, everything
 else will become a json parameter.
 
-[!NOTE]
+[!NOTE]\
 Validation of params by Pydantic when submitting through the UI and CLI is **currently** not
-done at time of DAG run creation. To achieve early failure of your PydanticDAG `dag`
-for invalid parameters, do one of the following:
+done at time of DAG run creation. This will be part of a future update. The current assumption
+is that, the first time you need to access your parameters, you will fail.
+See point just below for how to achieve this earlier.
+
+To achieve systematic early failure of your PydanticDAG `dag` for invalid parameters,
+do one of the following:
 
 - use `PydanticDAG(add_validation_task=True)`: this will add a task
   (without dependencies) to your DAG that validates the params
