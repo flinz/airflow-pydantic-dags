@@ -1,6 +1,7 @@
 # Airflow-Pydantic-DAGs
 
 [![Python CICD](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml)
+[![codecov](https://codecov.io/gh/flinz/airflow-pydantic-dags/graph/badge.svg?token=1ZF2YODYG1)](https://codecov.io/gh/flinz/airflow-pydantic-dags)
 
 PydanticDAGs allows you to use [Pydantic](https://pydantic.dev) models for task configuration in your [Airflow](https://airflow.apache.org) DAGs.
 
