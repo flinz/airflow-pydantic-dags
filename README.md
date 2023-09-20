@@ -56,7 +56,7 @@ for invalid parameters, do one of the following:
 
 ## Example
 
-Source is at [dags/example.py](dags/example.py):
+Source is at [example.py](src/airflow_pydantic_dags/examples/example_dag.py):
 
 ```python
 from airflow_pydantic_dags.dag import PydanticDAG
