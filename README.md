@@ -1,5 +1,6 @@
 # Airflow-Pydantic-DAGs
 
+![PyPI - Version](https://img.shields.io/pypi/v/airflow-pydantic-dags)
 [![Python CICD](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml/badge.svg)](https://github.com/flinz/airflow-pydantic-dags/actions/workflows/python-publish.yml)
 [![codecov](https://codecov.io/gh/flinz/airflow-pydantic-dags/graph/badge.svg?token=1ZF2YODYG1)](https://codecov.io/gh/flinz/airflow-pydantic-dags)
 
@@ -15,16 +16,14 @@ Enter [Pydantic](https://pydantic.dev): using the `DAG` model of `airflow-pydant
 
 ## Installation
 
-Currently, this supports:
-
-- airflow >= 2.6.0
-- pydantic < 2
-
-As soon as we publish this to pip :) you can
-
 ```
 pip install airflow-pydantic-dags
 ```
+
+Currently, we support:
+
+- airflow >= 2.6.0
+- pydantic < 2 (support for pydantic>=2 was added in `airflow==2.7.1`, i.e. coming soon here too)
 
 ## Usage
 
