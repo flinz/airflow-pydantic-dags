@@ -8,12 +8,19 @@ from airflow.decorators import task
 from airflow.exceptions import AirflowException
 from airflow.operators.empty import EmptyOperator
 
+from airflow_pydantic_dags import is_pydantic_2
 from airflow_pydantic_dags.dag import PydanticDAG
-from airflow_pydantic_dags.warnings import IgnoringExtrasWarning
 
 default_str = "default"
 nondefault_str = "nondefault"
 default_int = 1
+
+
+def get_dict(p: pyd.BaseModel):
+    if is_pydantic_2:
+        return p.model_dump()
+    else:
+        return p.dict()
 
 
 class InnerClass(pyd.BaseModel):
@@ -24,6 +31,9 @@ class RunConfig(pyd.BaseModel):
     string_param: str = default_str
     int_param: int = default_int
     nested_param: InnerClass = InnerClass()
+
+    class Config:
+        extra = pyd.Extra.ignore
 
 
 def test_task_without_kwargs_fails(caplog: pytest.LogCaptureFixture):
@@ -86,46 +96,38 @@ def test_pydantic_class_without_default_fails():
 
 @pytest.mark.parametrize(
     "setting",
-    [pyd.Extra.allow, pyd.Extra.forbid],
+    ["allow", "forbid"],
 )
-def test_pydantic_class_without_extra_ignore_warning(setting: pyd.Extra):
+def test_pydantic_class_without_extra_ignore_warning(setting: str):
     """Test that extra!=Extra.ignore raises a warning when
     behavior is changed in the Pydantic class"""
 
     # create a pydantic model that does NOT
     # ignore extra fields
-    class RunConfigNoIgnore(pyd.BaseModel):
-        only_attr: str = "value"
+    if is_pydantic_2:
 
-        class Config:
-            extra = setting
+        class RunConfigNoIgnore(pyd.BaseModel):
+            only_attr: str = "value"
+            model_config = pyd.ConfigDict(extra=setting)
+
+    else:
+
+        class RunConfigNoIgnore(pyd.BaseModel):  # type: ignore[no-redef]
+            only_attr: str = "value"
+
+            class Config:
+                extra = setting
 
     # instantiate a dag, to raise a warning about
     # the change of behavior in the pydantic class
-    with pytest.warns(IgnoringExtrasWarning):
-        dag = PydanticDAG(
+    with pytest.raises(ValueError, match="Please change to extra"):
+        PydanticDAG(
             pydantic_class=RunConfigNoIgnore,
             dag_id="test_pydantic_dag",
             schedule=None,
             start_date=pendulum.datetime(2021, 1, 1, tz="UTC"),
             catchup=False,
         )
-
-    # this is a little paranoid, but lets just test
-    # our assumptions about python:
-    # if we modify the class at runtime, this is independent
-    # of the scope we do this in.
-    assert dag.run_config_class is RunConfigNoIgnore
-    assert RunConfigNoIgnore.Config.extra is pyd.Extra.ignore
-
-    # and since we're a little paranoid about pydantic itself
-    # (can we really modify Config at runtime?
-    # I've had some unexpected behavior doing similar things)
-    # let's be complete and test whether the change is actually
-    # working as intended, i.e. we're ignoring extra values
-    x = RunConfigNoIgnore(**{"other_attr": "ignore_this"})
-    assert len(x.dict().keys()) == 1
-    assert list(x.dict().keys())[0] == "only_attr"
 
 
 @pytest.mark.parametrize(
@@ -164,7 +166,7 @@ def test_mapped_expand_against_params(params, conf):
             assert dag.run_config_class == RunConfig
             param_dict.append(dict(kwargs["params"]))
             if config_object is not None:
-                object_dict.append(config_object.dict())
+                object_dict.append(get_dict(config_object))
 
         pull_params()
 
@@ -176,12 +178,12 @@ def test_mapped_expand_against_params(params, conf):
     # this lets us test also the non-set params case
     if params is None:
         params = {}
-    assert param_dict[0] == dict(params, **expected_class.dict())
+    assert param_dict[0] == dict(params, **get_dict(expected_class))
 
     # test that the config object's properties were parsed by pydantic\
     # tested here by equality of the dict that is produced
     assert len(object_dict) == 1
-    assert object_dict[0] == expected_class.dict()
+    assert object_dict[0] == get_dict(expected_class)
 
 
 def test_invalid_parameters_failing_at_dagrun_creation():
@@ -205,7 +207,7 @@ def test_invalid_parameters_failing_at_dagrun_creation():
     # and we will catch it, turn it into an airflowexception
     # and it is thrown, outside of airflow execution
     # at creation-time of the DAGruns
-    with pytest.raises(AirflowException, match="not a valid integer"):
+    with pytest.raises(AirflowException, match="valid integer"):
         dag.test(run_conf={"int_param": "not_an_int"})
 
 
@@ -267,5 +269,5 @@ def test_validation_task(monkeypatch):
     ) as dag:
         pass
 
-    with pytest.raises(AirflowException, match="not a valid integer"):
+    with pytest.raises(AirflowException, match="valid integer"):
         dag.test(run_conf={"int_param": "not_an_int"})

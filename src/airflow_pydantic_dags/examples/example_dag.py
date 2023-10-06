@@ -17,6 +17,11 @@ class MyRunConfig(pyd.BaseModel):
             raise ValueError("must contain a space")
         return v
 
+    # in pydantic 1, this is optional
+    # in pydantic 2, this setting needs to be present
+    class Config:
+        extra = pyd.Extra.ignore
+
 
 with PydanticDAG(
     pydantic_class=MyRunConfig,
