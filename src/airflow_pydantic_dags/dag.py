@@ -1,4 +1,3 @@
-import warnings
 from functools import wraps
 from typing import Callable, Generic, TypeVar, Union
 
@@ -9,8 +8,8 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.session import NEW_SESSION, provide_session
 from sqlalchemy.orm.session import Session
 
+from airflow_pydantic_dags import is_pydantic_2
 from airflow_pydantic_dags.exceptions import NoDefaultValuesException
-from airflow_pydantic_dags.warnings import IgnoringExtrasWarning
 
 T = TypeVar("T", bound=pyd.BaseModel)
 
@@ -61,10 +60,6 @@ class PydanticDAG(DAG, Generic[T]):
         if "params" not in kwargs or kwargs["params"] is None:
             kwargs["params"] = {}
 
-        print("--------------------------------------------------- PARAMS")
-        print(kwargs["params"])
-        print("---------------------------------------------------")
-
         try:
             # this will enforce default values exist for all fields in the run_config
             # validation error will be raised here, if the pydantic model does not
@@ -77,22 +72,34 @@ class PydanticDAG(DAG, Generic[T]):
 
         # append pydantic attributes to the params
         # this makes them available in the UI to trigger dags
-        kwargs["params"].update(pydantic_class_default_instance.dict())
+        if is_pydantic_2:
+            kwargs["params"].update(pydantic_class_default_instance.model_dump())
+        else:
+            kwargs["params"].update(pydantic_class_default_instance.dict())
 
         # ensure the pydantic model ignores extra fields
         # which we use to parse params, and ignore the extra
-        if pydantic_class_default_instance.Config.extra is not pyd.Extra.ignore:
+        if is_pydantic_2:
+            is_extra_ignored = pydantic_class_default_instance.model_config.get("extra") == "ignore"
+        else:
+            is_extra_ignored = pydantic_class_default_instance.Config.extra is pyd.Extra.ignore
+
+        if not is_extra_ignored:
             # we originally also had Extra.allow, but I don't see
             # a usecase for this. I want only the fields relating
             # to my model to be parsed.
-            warnings.warn(
-                IgnoringExtrasWarning(
-                    f"Setting Pydantic class {type(pydantic_class)} to "
-                    "use Config.extra=ignore, instead of "
-                    f"Config.extra={pydantic_class_default_instance.Config.extra}"
-                )
+
+            if is_pydantic_2:
+                extra_value = pydantic_class_default_instance.model_config.get("extra")
+            else:
+                extra_value = pydantic_class_default_instance.Config.extra
+
+            raise ValueError(
+                f"The Pydantic class {type(pydantic_class)} uses "
+                f"extra={extra_value}. Changing this "
+                f"at runtime is not supported yet. Please change to "
+                f"extra='ignore'"
             )
-            self.run_config_class.Config.extra = pyd.Extra.ignore
 
         super().__init__(*args, **kwargs)
 
