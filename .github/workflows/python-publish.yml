@@ -35,7 +35,7 @@ jobs:
           pre-commit run --all-files
       - name: Test with tox
         run: |
-          sed -i 's/>=2.6,<=2.7/${{ matrix.airflow-version }}/g;s/>=1.10,<=2/${{ matrix.pydantic-version }}/g' requirements.txt
+          sed -i 's/apache-airflow>=2.6/apache-airflow${{ matrix.airflow-version }}/g;s/pydantic>=1.10/pydantic${{ matrix.pydantic-version }}/g' requirements.txt
           tox
           ls -lahrt
       - name: Upload coverage reports to Codecov
